@@ -9,7 +9,7 @@ import {
 import { User } from "./User.entity";
 import { SubSection } from "./SubSection.entity";
 
-@Entity()
+@Entity("CourseProgress")
 export class CourseProgress {
   @PrimaryGeneratedColumn("uuid")
   id: string;

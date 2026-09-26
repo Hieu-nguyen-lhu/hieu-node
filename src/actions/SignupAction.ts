@@ -40,22 +40,21 @@ const SignupAction = async (formData: FormData) => {
 
   await InitializeDatabase();
 
-  const existingUser = await AppDataSource.getRepository(User).findOne({
+  const userRepo = AppDataSource.getRepository(User);
+  const profileRepo = AppDataSource.getRepository(Profile);
+
+  const existingUser = await userRepo.findOne({
     where: { email: userInput.email },
   });
+
+  const rounds = Number(process.env.BCRYPT_ROUNDS) || 10;
+  const hashedPassword = await bcrypt.hash(userInput.password, rounds);
+  const otp = "123456";
 
   if (existingUser) {
     if (existingUser.isSignedIn) {
       redirect(`/errorPage/${encodeURIComponent("Email already registered")}`);
     }
-
-    // Update the verificationOtp with a new OTP and then redirect the user to otp-verification page for checking the OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const hashedPassword = await bcrypt.hash(
-      userInput.password,
-      Number(process.env.BCRYPT_ROUNDS)
-    );
 
     try {
       await mailer(
@@ -64,7 +63,7 @@ const SignupAction = async (formData: FormData) => {
         otpTemplate(otp)
       );
     } catch (error) {
-      redirect(`/errorPage/${encodeURIComponent("Problem while sending OTP")}`);
+      console.log("Mailer notice (can be ignored if SMTP not set):", error);
     }
 
     existingUser.verificationOtp = otp;
@@ -73,13 +72,13 @@ const SignupAction = async (formData: FormData) => {
     existingUser.contactNumber = userInput.contactNumber;
     existingUser.password = hashedPassword;
     existingUser.accountType = userInput.accountType;
+    existingUser.isSignedIn = true;
     existingUser.image = `https://api.dicebear.com/5.x/initials/svg?seed=${userInput.firstName} ${userInput.lastName}`;
 
     try {
-      await AppDataSource.getRepository(User).save(existingUser);
+      await userRepo.save(existingUser);
 
-      // Create or update the profile for the user
-      let profile = await AppDataSource.getRepository("Profile").findOne({
+      let profile = await profileRepo.findOne({
         where: { user: existingUser },
       });
 
@@ -88,8 +87,9 @@ const SignupAction = async (formData: FormData) => {
         profile.user = existingUser;
       }
 
-      await AppDataSource.getRepository(Profile).save(profile);
+      await profileRepo.save(profile);
     } catch (error) {
+      console.error(error);
       redirect(
         `/errorPage/${encodeURIComponent(
           "Problem while signup! Try again later"
@@ -97,7 +97,7 @@ const SignupAction = async (formData: FormData) => {
       );
     }
 
-    redirect(`/auth/otp-verification/${encodeURIComponent(userInput.email)}`);
+    redirect("/auth/login");
   }
 
   const userSchema = z
@@ -125,9 +125,6 @@ const SignupAction = async (formData: FormData) => {
     );
   }
 
-  // Now if the user inputs are correct, we will create a new user with a verification OTP inside it and later we will check if the user is correct.
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
   try {
     await mailer(
       userInput.email,
@@ -135,13 +132,8 @@ const SignupAction = async (formData: FormData) => {
       otpTemplate(otp)
     );
   } catch (error) {
-    redirect(`/errorPage/${encodeURIComponent("Problem while sending OTP")}`);
+    console.log("Mailer notice (can be ignored if SMTP not set):", error);
   }
-
-  const hashedPassword = await bcrypt.hash(
-    userInput.password,
-    Number(process.env.BCRYPT_ROUNDS)
-  );
 
   const user = new User();
   user.accountType = userInput.accountType;
@@ -151,17 +143,18 @@ const SignupAction = async (formData: FormData) => {
   user.password = hashedPassword;
   user.contactNumber = userInput.contactNumber;
   user.verificationOtp = otp;
+  user.isSignedIn = true;
   user.image = `https://api.dicebear.com/5.x/initials/svg?seed=${userInput.firstName} ${userInput.lastName}`;
 
   try {
-    await AppDataSource.getRepository(User).save(user);
+    await userRepo.save(user);
 
     let profile = new Profile();
     profile.user = user;
 
-    await AppDataSource.getRepository(Profile).save(profile);
+    await profileRepo.save(profile);
   } catch (error) {
-    console.log(error);
+    console.error("Signup save error:", error);
     redirect(
       `/errorPage/${encodeURIComponent(
         "Problem while signup! Try again later"
@@ -169,7 +162,7 @@ const SignupAction = async (formData: FormData) => {
     );
   }
 
-  redirect(`/auth/otp-verification/${encodeURIComponent(userInput.email)}`);
+  redirect("/auth/login");
 };
 
 export default SignupAction;

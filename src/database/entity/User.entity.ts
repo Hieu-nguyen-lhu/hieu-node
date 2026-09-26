@@ -21,7 +21,7 @@ enum AccountType {
   INSTRUCTOR = "Instructor",
 }
 
-@Entity()
+@Entity("User")
 export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
