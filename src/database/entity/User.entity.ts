@@ -44,7 +44,7 @@ export class User {
   @Column()
   image: string;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   verificationOtp: string | null;
 
   @Column({ default: false })
