@@ -45,7 +45,7 @@ export class User {
   image: string;
 
   @Column({ nullable: true })
-  verificationOtp: string;
+  verificationOtp: string | null;
 
   @Column({ default: false })
   isSignedIn: boolean;

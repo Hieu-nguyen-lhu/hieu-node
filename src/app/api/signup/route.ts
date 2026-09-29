@@ -1,4 +1,5 @@
 import InitializeDatabase, { AppDataSource } from "@/database/dataSource";
+import { User } from "@/database/entity/User.entity";
 import { otpTemplate } from "@/mails/emailVerificationTemplate";
 import mailer from "@/services/Nodemailer";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +10,8 @@ export async function POST(req: NextRequest) {
 
     await InitializeDatabase();
 
-    const user = await AppDataSource.getRepository("User").findOne({
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({
       where: { email },
     });
 
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
     user.isSignedIn = true;
 
     try {
-      await AppDataSource.getRepository("User").save(user);
+      await userRepo.save(user);
     } catch (error) {
       return NextResponse.json({
         success: false,
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "User Signed In successfully",
+      message: "User Verified successfully",
       user,
     });
   } catch (error) {
@@ -59,7 +61,8 @@ export async function PUT(req: NextRequest) {
 
     await InitializeDatabase();
 
-    const user = await AppDataSource.getRepository("User").findOne({
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({
       where: { email },
     });
 
@@ -84,7 +87,7 @@ export async function PUT(req: NextRequest) {
     }
 
     try {
-      await AppDataSource.getRepository("User").save(user);
+      await userRepo.save(user);
     } catch (error) {
       return NextResponse.json({
         success: false,

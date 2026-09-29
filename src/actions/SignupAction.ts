@@ -49,7 +49,8 @@ const SignupAction = async (formData: FormData) => {
 
   const rounds = Number(process.env.BCRYPT_ROUNDS) || 10;
   const hashedPassword = await bcrypt.hash(userInput.password, rounds);
-  const otp = "123456";
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  console.log(`[SIGNUP] Generated OTP for ${userInput.email}: ${otp}`);
 
   if (existingUser) {
     if (existingUser.isSignedIn) {
@@ -62,8 +63,13 @@ const SignupAction = async (formData: FormData) => {
         "StudyNotion Verification Email",
         otpTemplate(otp)
       );
-    } catch (error) {
-      console.log("Mailer notice (can be ignored if SMTP not set):", error);
+    } catch (error: any) {
+      console.error("[SIGNUP] Mailer error:", error);
+      redirect(
+        `/errorPage/${encodeURIComponent(
+          "Problem while sending OTP email: " + (error?.message || "Please check SMTP configuration")
+        )}`
+      );
     }
 
     existingUser.verificationOtp = otp;
@@ -72,7 +78,7 @@ const SignupAction = async (formData: FormData) => {
     existingUser.contactNumber = userInput.contactNumber;
     existingUser.password = hashedPassword;
     existingUser.accountType = userInput.accountType;
-    existingUser.isSignedIn = true;
+    existingUser.isSignedIn = false;
     existingUser.image = `https://api.dicebear.com/5.x/initials/svg?seed=${userInput.firstName} ${userInput.lastName}`;
 
     try {
@@ -97,7 +103,7 @@ const SignupAction = async (formData: FormData) => {
       );
     }
 
-    redirect("/auth/login");
+    redirect(`/auth/otp-verification/${encodeURIComponent(userInput.email)}`);
   }
 
   const userSchema = z
@@ -131,8 +137,13 @@ const SignupAction = async (formData: FormData) => {
       "StudyNotion Verification Email",
       otpTemplate(otp)
     );
-  } catch (error) {
-    console.log("Mailer notice (can be ignored if SMTP not set):", error);
+  } catch (error: any) {
+    console.error("[SIGNUP] Mailer error:", error);
+    redirect(
+      `/errorPage/${encodeURIComponent(
+        "Problem while sending OTP email: " + (error?.message || "Please check SMTP configuration")
+      )}`
+    );
   }
 
   const user = new User();
@@ -143,7 +154,7 @@ const SignupAction = async (formData: FormData) => {
   user.password = hashedPassword;
   user.contactNumber = userInput.contactNumber;
   user.verificationOtp = otp;
-  user.isSignedIn = true;
+  user.isSignedIn = false;
   user.image = `https://api.dicebear.com/5.x/initials/svg?seed=${userInput.firstName} ${userInput.lastName}`;
 
   try {
@@ -162,7 +173,7 @@ const SignupAction = async (formData: FormData) => {
     );
   }
 
-  redirect("/auth/login");
+  redirect(`/auth/otp-verification/${encodeURIComponent(userInput.email)}`);
 };
 
 export default SignupAction;
