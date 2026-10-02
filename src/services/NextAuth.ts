@@ -96,8 +96,10 @@ export const NEXT_AUTH: NextAuthOptions = {
       async profile(profile) {
         await InitializeDatabase();
 
+        const email = profile.email || `${profile.login}@users.noreply.github.com`;
+
         const user = await AppDataSource.getRepository(UserEntity).findOne({
-          where: { email: profile.email },
+          where: { email },
           relations: ["additionalInformation"],
         });
 
@@ -110,8 +112,10 @@ export const NEXT_AUTH: NextAuthOptions = {
         }
 
         return {
-          id: profile.id,
-          email: profile.email,
+          id: String(profile.id),
+          name: profile.name || profile.login,
+          email: email,
+          image: profile.avatar_url,
           accountType: "Student",
         } as Awaitable<User>;
       },
@@ -124,21 +128,23 @@ export const NEXT_AUTH: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === "google") {
+      if (account?.provider === "google" || account?.provider === "github") {
         try {
           await InitializeDatabase();
           const userRepo = AppDataSource.getRepository(UserEntity);
+          const email = user.email || (profile as any)?.email || `${(profile as any)?.login}@users.noreply.github.com`;
+
           let existingUser = await userRepo.findOne({
-            where: { email: user.email! },
+            where: { email },
           });
 
           if (!existingUser) {
             existingUser = new UserEntity();
-            existingUser.email = user.email!;
-            existingUser.firstName = (profile as any)?.given_name || user.name?.split(" ")[0] || "Google";
+            existingUser.email = email;
+            existingUser.firstName = (profile as any)?.given_name || user.name?.split(" ")[0] || (profile as any)?.login || "GitHub";
             existingUser.lastName = (profile as any)?.family_name || user.name?.split(" ")[1] || "User";
             existingUser.contactNumber = "0000000000";
-            existingUser.image = user.image || (profile as any)?.picture || "";
+            existingUser.image = user.image || (profile as any)?.picture || (profile as any)?.avatar_url || "";
             existingUser.password = "";
             existingUser.isSignedIn = true;
             existingUser.accountType = "Student" as any;
@@ -150,10 +156,13 @@ export const NEXT_AUTH: NextAuthOptions = {
             await profileRepo.save(newProfile);
           } else {
             existingUser.isSignedIn = true;
+            if (user.image && !existingUser.image) {
+              existingUser.image = user.image;
+            }
             await userRepo.save(existingUser);
           }
         } catch (e) {
-          console.error("Error auto-creating google user:", e);
+          console.error("Error auto-creating oauth user:", e);
         }
       }
       return true;
