@@ -95,3 +95,8 @@ These technologies lay the foundation for a scalable and secure platform, with f
    ```bash
    npm run dev
    ```
+
+## CI/CD Pipeline
+- Webhook Endpoint: `https://hieunode.sixforce.io.vn/webhook`
+- Auto-Deploy: PM2 Cluster Mode
+- Auto-Rollback: Enabled
